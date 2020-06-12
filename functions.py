@@ -1,5 +1,9 @@
 from constants import *
-from classes import point, vector3
+from classes import *
+from math import cos, sin, pi, pow, sqrt
+from random import randint
+from decimal import Decimal
+object_id = 0
 
 # -------------------------VECTORS AND POINTS FUNCTIONS------------------------------------------------------------------
 
@@ -35,6 +39,24 @@ def NegatingTuples(a):
     a.z = a.z * -1
     a.w = a.w * -1
     return a
+
+def TuplePowers(v, power):
+    x = pow(v.x,power)
+    y = pow(v.y,power)
+    z = pow(v.z,power)
+    if v.w == 1:
+        return point(x, y, z)
+    else:
+        return vector3(x, y, z)
+
+def TupleSqrt(v):
+    x = sqrt(v.x)
+    y = sqrt(v.y)
+    z = sqrt(v.z)
+    if v.w == 1:
+        return point(x, y, z)
+    else:
+        return vector3(x, y, z)
 
 def MultiplyTuple(a, scalar):
     a.x = a.x * scalar
@@ -82,20 +104,66 @@ def HadamartProduct(a, b):
     return (a[0]*b[0], a[1]*b[1], a[2]*b[2])
 
 #----------------------------------MATRICES------------------------------------------------------------------
+def PointToMatrix1(a):
+    return [[a.x, a.y, a.z, a.w]]
+def PointToMatrix2(a):
+    return [[a.x], [a.y], [a.z], [a.w]]
+
+def VectorToMatrix1(a):
+    return [[a.x, a.y, a.z, a.w]]
+def VectorToMatrix2(a):
+    b = [[a.x],
+        [a.y],
+        [a.z],
+        [a.w]]
+    return  b
+
+def MatrixToVector1(a):
+    return vector3(a[0][1], a[0][2], a[0][3])
+def MatrixToVector2(a):
+    return vector3(a[0][0], a[1][0], a[2][0])
+
+def MatrixToPoint1(a):
+    return point(a[0][1], a[0][2], a[0][3])
+def MatrixToPoint2(a):
+    return point(a[0][0], a[1][0], a[2][0])
 
 def MultiplyMatrix(a, b):
+    check = 2
+    if isinstance(a, point):
+        a = PointToMatrix1(a)
+        check = 1
+    elif isinstance(a, vector3):
+        check = 0
+        a = VectorToMatrix1(a)
+    if isinstance(b, point):
+        check=3
+        b = PointToMatrix2(b)
+    elif isinstance(b, vector3):
+        check = 4
+        b = VectorToMatrix2(b)
     columns_a = len(a[0])
     rows_a = len(a)
     columns_b = len(b[0])
     rows_b = len(b)
     result = [[i for i in range(columns_b)] for j in range(rows_a)]
+    if columns_a != rows_b:
+        print("Error! the number of columns of the first matrix must be equal to the number of rows of the second!")
+        return None
     for x in range(rows_a):
         for y in range(columns_b):
             sum = 0
-            for k in range(columns_b):
+            for k in range(columns_a):
                 sum += a[x][k] * b[k][y]
             result[x][y] = sum
-
+    if check == 1:
+        return MatrixToPoint1(result)
+    elif check == 0:
+        return MatrixToVector1(result)
+    elif check == 3:
+        return MatrixToPoint2(result)
+    elif check == 4:
+        return MatrixToVector2(result)
     return result
 
 def TransposeMatrix(M):
@@ -181,9 +249,106 @@ def InverseMatrix(M):
 
         return matrix
 
-A = [[3, -9, 7, 3], [3, -8, 2, -9], [-4, 4, 4, 1], [-6, 5, -1, 1]]
-B = [[8, 2, 2, 2], [3, -1, 7, 0], [7, 0, 5, 4], [6, -2, 0, 5]]
+def InverseTransform(t):
+    return transform(-t.x, -t.y, -t.z)
 
-C = MultiplyMatrix(A, B)
-D = InverseMatrix(B)
-print(InverseMatrix(identity_matrix))
+def TranslationMatrix(x, y, z):
+    return [[1, 0 ,0, x],
+            [0, 1, 0, y],
+            [0, 0, 1, z],
+            [0, 0, 0, 1]]
+
+def ScalingMatrix(x, y, z):
+    return [[x, 0 ,0, 0],
+            [0, y, 0, 0],
+            [0, 0, z, 0],
+            [0, 0, 0, 1]]
+
+def DegreeToRadian(deg):
+    return (deg * PI) /180
+
+def XRotationMatrix(rad):
+    return [[1, 0, 0, 0],
+            [0, cos(rad), -sin(rad), 0],
+            [0, sin(rad), cos(rad), 0],
+            [0, 0, 0, 1]]
+def YRotationMatrix(rad):
+    return [[cos(rad), 0, sin(rad), 0],
+            [0, 1, 0, 0],
+            [-sin(rad), 0, cos(rad), 0],
+            [0, 0, 0, 1]]
+def ZRotationMatrix(rad):
+    return [[cos(rad), -sin(rad), 0, 0],
+            [sin(rad), cos(rad), 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]]
+
+def ShearingMatrix(xy, xz, yx, yz, zx, zy):
+    return [[1, xy, xz, 0],
+            [yx, 1, yz, 0],
+            [zx, zy, 1, 0],
+            [0, 0, 0, 1]]
+
+#-----------------------------Ray----------------------------
+def hit(i):
+    try:
+        m = min(v.t for v in i if v.t > 0 )
+        return m
+    except :
+        return None
+
+def transform(r, m):
+    origin = MultiplyMatrix(m, r.origin)
+    dir = MultiplyMatrix(m, r.direction)
+    return ray(origin, dir)
+
+def set_transform(s, t):
+    s.transform = t
+
+def position(r, t):
+    return AddingTuples(r.origin, MultiplyTuple(r.direction, t))
+
+def Intersections(*args):
+    return [*args]
+
+def Intersect(s, r):
+    r = transform(r, InverseMatrix(s.transform))
+
+    L = SubtractingTuples(r.origin, s.center )
+    a = DotProduct(r.direction, r.direction)
+    b = 2 * DotProduct(r.direction, L)
+    c = DotProduct(L, L)-1.0
+    discriminant = (b ** 2)-(4 * a * c)
+
+    if discriminant < 0:
+        return []
+    else:
+        t1 = float((-b - sqrt(discriminant))/(2*a))
+        t2 = float((-b + sqrt(discriminant))/(2*a))
+        i1 = intersection(t1, s)
+        i2 = intersection(t2, s)
+        p = Intersections(i1, i2)
+        return p
+
+
+
+# r = ray(point(0, 0, -5), vector3(0, 0, 1))
+# m = ScalingMatrix(2, 2, 2)
+# s = Sphere(point(0, 0, 0), 1)
+# set_transform(s, m)
+# xs = Intersect(s, r)
+# print(len(xs))
+# print(xs[0].t)
+# print(xs[1].t)
+
+# r2 = transform(r, m)
+#
+# t = TranslationMatrix(2, 3, 4)
+#
+#
+# print("-----origin-----")
+# print("{}, {}, {} ".format(r2.origin.x, r2.origin.y, r2.origin.z))
+# print("---direction---")
+# print("{}, {}, {} ".format(r2.direction.x, r2.direction.y, r2.direction.z))
+# print(s.transform)
+# # print("{}, {}, {}, {}".format(xs.x, xs.y, xs.z, xs.w))
