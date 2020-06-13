@@ -94,6 +94,7 @@ def CrossProduct(v1, v2):
 def AddColors(a, b):
     return (a[0]+b[0], a[1]+b[1], a[2]+b[2])
 
+
 def SubtractingColors(a, b):
     return (a[0]-b[0], a[1]-b[1], a[2]-b[2])
 
@@ -305,7 +306,7 @@ def transform(r, m):
 def set_transform(s, t):
     s.transform = t
 
-def position(r, t):
+def Position(r, t):
     return AddingTuples(r.origin, MultiplyTuple(r.direction, t))
 
 def Intersections(*args):
@@ -330,25 +331,47 @@ def Intersect(s, r):
         p = Intersections(i1, i2)
         return p
 
+# -------------------Light And shadows-----------------
 
+def normal_at(obj, pos):
+    object_point = MultiplyMatrix(InverseMatrix(obj.transform), pos)
+    object_normal = SubtractingTuples(object_point, obj.center)
+    world_normal = MultiplyMatrix(TransposeMatrix(InverseMatrix(obj.transform)), object_normal)
+    return NormalizeVector(world_normal)
 
-# r = ray(point(0, 0, -5), vector3(0, 0, 1))
-# m = ScalingMatrix(2, 2, 2)
-# s = Sphere(point(0, 0, 0), 1)
-# set_transform(s, m)
-# xs = Intersect(s, r)
-# print(len(xs))
-# print(xs[0].t)
-# print(xs[1].t)
+def reflect(vec, normal):
+    return SubtractingTuples(vec , MultiplyTuple(normal, 2 * DotProduct(vec, normal)))
 
-# r2 = transform(r, m)
-#
-# t = TranslationMatrix(2, 3, 4)
-#
-#
-# print("-----origin-----")
-# print("{}, {}, {} ".format(r2.origin.x, r2.origin.y, r2.origin.z))
-# print("---direction---")
-# print("{}, {}, {} ".format(r2.direction.x, r2.direction.y, r2.direction.z))
-# print(s.transform)
-# # print("{}, {}, {}, {}".format(xs.x, xs.y, xs.z, xs.w))
+def Lighting(material , light, position, eye_direction, normal_vector):
+    ambient = (0, 0, 0)
+    specular = (0, 0, 0)
+    diffuse = (0, 0, 0)
+    effective_color = HadamartProduct(material.color, light.intensity)
+    light_direction = NormalizeVector(SubtractingTuples(light.position, position))
+    ambient = MultiplyColor(effective_color, material.ambient)
+    light_dot_normal = DotProduct(light_direction, normal_vector)
+    if light_dot_normal < 0:
+        diffuse = (0, 0, 0)
+        specular = (0, 0, 0)
+    else:
+        diffuse = MultiplyColor(MultiplyColor(effective_color, material.diffuse), light_dot_normal)
+        reflectv = reflect(NegatingTuples(light_direction), normal_vector)
+        reflet_dot_eye = DotProduct(reflectv, eye_direction)
+        if reflet_dot_eye <= 0:
+            specular = (0, 0, 0)
+        else:
+            factor = pow(reflet_dot_eye, material.shininess)
+            specular = MultiplyColor(MultiplyColor(light.intensity, material.specular ),factor )
+
+    result = AddColors(AddColors(ambient, diffuse), specular)
+    return result
+
+# light = pointLight(point(0, 0, 0), (1, 1, 1))
+# m = Material()
+# eyev = vector3(0, sqrt(2)/2, -sqrt(2)/2)
+# normalv = vector3(0, 0, -1)
+# light = pointLight(point(0, 0, -10))
+# position = point(0, 0, 0)
+# result = Lighting(m, light, position, eyev, normalv)
+# print(result)
+# print("{}, {}, {}, {}".format(n.x, n.y, n.z, n.w))
